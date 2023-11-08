@@ -7,19 +7,37 @@ def append_to_equation(symbol):
     current_text = equation.get()
     if current_text == "Error":
         current_text = ""
-    equation.set(current_text + symbol)
+    # For scientific functions, open a parenthesis automatically
+    if symbol in scientific_functions:
+        current_text += symbol + '('
+    else:
+        current_text += symbol
+    equation.set(current_text)
 
 # Function to preprocess the equation and replace custom operators with python equivalents
 def preprocess_equation(eq):
-    # Insert * between a number and a sqrt symbol or power symbol
-    eq = re.sub(r'(\d)([√^])', r'\1*\2', eq)
+    # Insert * where implied between a number and a parenthesis or a sqrt symbol
+    eq = re.sub(r'(\d)(\()', r'\1*\2', eq)
     
-    # Replace the sqrt symbol with power of 0.5 for eval, capturing the operand following it
-    eq = re.sub(r'√(\d+)', r'(\1)**0.5', eq)
+    # Replace the sqrt symbol with math.sqrt for eval, capturing the operand following it
+    eq = eq.replace('sqrt', 'math.sqrt')
     
+    # Replace trigonometric and logarithmic symbols with their math module equivalents
+    trig_functions = {'sin': 'math.sin', 'cos': 'math.cos', 'tan': 'math.tan',
+                      'asin': 'math.asin', 'acos': 'math.acos', 'atan': 'math.atan'}
+    for func, math_func in trig_functions.items():
+        eq = eq.replace(func, math_func + '(math.radians')
+
+    log_functions = {'ln': 'math.log', 'log': 'math.log10'}
+    for func, math_func in log_functions.items():
+        eq = eq.replace(func, math_func)
+
+    # Close any opened functions with a parenthesis
+    eq += ')' * eq.count('(')
+
     # Replace ^ with ** for exponentiation
     eq = eq.replace('^', '**')
-    
+
     # Autocomplete missing parentheses
     open_parens, close_parens = eq.count('('), eq.count(')')
     eq += ')' * (open_parens - close_parens) if open_parens > close_parens else ''
@@ -68,12 +86,22 @@ entry_result.pack(expand=True, fill='both')
 
 # Buttons for calculator
 buttons = [
-    ('(', ')', 'C', '/', '√'),
+    ('(', ')', 'C', '/', 'sqrt'),
     ('7', '8', '9', '*', '^'),
     ('4', '5', '6', '-', '%'),
     ('1', '2', '3', '+', 'ANS'),
     ('0', '.', '=', '⌫')
 ]
+
+# Additional scientific function buttons
+sci_buttons = [
+    ('sin', 'cos', 'tan', 'asin'),
+    ('acos', 'atan', 'ln', 'log'),
+    ('factorial')
+]
+
+# Set of scientific functions
+scientific_functions = {'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'ln', 'log', 'sqrt'}
 
 # Function to create a button
 def make_button(parent, text):
@@ -81,23 +109,18 @@ def make_button(parent, text):
                      command=lambda: append_to_equation(text) if text not in ['=', 'C', '⌫', 'ANS'] else None)
 
 # Add buttons to the UI
-for row in buttons:
+for row in buttons + sci_buttons:
     frame = tk.Frame(root)
     for symbol in row:
+        btn = make_button(frame, symbol)
         if symbol == '=':
-            btn = make_button(frame, symbol)
             btn.config(command=calculate)
         elif symbol == 'C':
-            btn = make_button(frame, symbol)
             btn.config(command=clear_all)
         elif symbol == '⌫':
-            btn = make_button(frame, symbol)
             btn.config(command=backspace)
         elif symbol == 'ANS':
-            btn = make_button(frame, symbol)
             btn.config(command=use_last_answer)
-        else:
-            btn = make_button(frame, symbol)
         btn.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
     frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
 
