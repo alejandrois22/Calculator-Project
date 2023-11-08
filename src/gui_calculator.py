@@ -1,47 +1,89 @@
 import tkinter as tk
+import re
 
-def perform_operation(operation):
+def append_to_equation(symbol):
+    # Append the operator or number to the equation string
+    current_text = equation.get()
+    if current_text == "Error":
+        current_text = ""
+    equation.set(current_text + symbol)
+
+def preprocess_equation(eq):
+    # Insert * between a number and a parenthesis
+    eq = re.sub(r'(\d)\(', r'\1*(', eq)
+    eq = re.sub(r'\)(\d)', r')*\1', eq)
+    # Autocomplete missing parentheses
+    open_parens, close_parens = eq.count('('), eq.count(')')
+    eq += ')' * (open_parens - close_parens) if open_parens > close_parens else ''
+    return eq
+
+def calculate():
     try:
-        num1 = float(entry_num1.get())
-        num2 = float(entry_num2.get())
-        if operation == 'add':
-            result.set(num1 + num2) 
-        elif operation == 'subtract':
-            result.set(num1 - num2)
-        elif operation == 'multiply':
-            result.set(num1 * num2)
-        elif operation == 'divide':
-            result.set(num1 / num2 if num2 != 0 else "Error: Division by zero")
-    except ValueError:
-        result.set("Please enter valid numbers")
+        # Preprocess the equation and evaluate
+        processed_equation = preprocess_equation(equation.get())
+        result_text = str(eval(processed_equation))
+        result.set(result_text)
+    except (ValueError, ZeroDivisionError, SyntaxError):
+        # Handle common errors from invalid equations
+        result.set("Error")
 
-def clear_entries():
-    entry_num1.delete(0, tk.END)
-    entry_num2.delete(0, tk.END)
+def clear_all():
+    equation.set("")
     result.set("")
+
+def backspace():
+    # Remove the last character from the equation string
+    equation.set(equation.get()[:-1])
 
 # Create the main window
 root = tk.Tk()
 root.title("Calculator")
+root.geometry("300x300")  # Default size
 
-# Variables for storing the entered numbers and the result
-entry_num1 = tk.Entry(root)
-entry_num2 = tk.Entry(root)
+# StringVars for storing the equation and result
+equation = tk.StringVar()
 result = tk.StringVar()
 
-# Layout the entry fields and result label
-entry_num1.pack()
-entry_num2.pack()
-tk.Label(root, textvariable=result).pack()
+# Entry field for the equation
+entry_equation = tk.Entry(root, textvariable=equation, state='normal', font=('Arial', 14))
+entry_equation.pack(expand=True, fill='both')
 
-# Layout the operation buttons
-tk.Button(root, text="Add", command=lambda: perform_operation('add')).pack()
-tk.Button(root, text="Subtract", command=lambda: perform_operation('subtract')).pack()
-tk.Button(root, text="Multiply", command=lambda: perform_operation('multiply')).pack()
-tk.Button(root, text="Divide", command=lambda: perform_operation('divide')).pack()
+# Entry field for the result, set to read-only
+entry_result = tk.Entry(root, textvariable=result, state='readonly', font=('Arial', 14))
+entry_result.pack(expand=True, fill='both')
 
-# Clear button to reset all fields
-tk.Button(root, text="Clear", command=clear_entries).pack()
+# Buttons for numbers, operations, and parentheses
+buttons = [
+    ('(', ')', 'C', '/'),
+    ('7', '8', '9', '*'),
+    ('4', '5', '6', '-'),
+    ('1', '2', '3', '+'),
+    ('0', '.', '=', '⌫')  # Using the backspace symbol '⌫'
+]
+
+for row in buttons:
+    frame = tk.Frame(root)
+    for symbol in row:
+        btn = tk.Button(frame, text=symbol, font=('Arial', 14),
+                        command=lambda sym=symbol: append_to_equation(sym) if sym not in ['=', 'C', '⌫'] else None)
+        if symbol == '=':
+            btn.config(command=calculate)
+        elif symbol == 'C':
+            btn.config(command=clear_all)
+        elif symbol == '⌫':
+            btn.config(command=backspace)
+        btn.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+    frame.pack(side=tk.TOP, expand=True, fill=tk.BOTH)
+
+# Adjust the size of the buttons as the window resizes
+def resize_buttons(event):
+    size = max(min(event.width, event.height) // 15, 8)
+    font = ('Arial', size)
+    for widget in root.winfo_children():
+        if isinstance(widget, tk.Button) or isinstance(widget, tk.Entry):
+            widget.config(font=font)
+
+root.bind('<Configure>', resize_buttons)
 
 # Start the GUI loop
 root.mainloop()
