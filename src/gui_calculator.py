@@ -5,7 +5,7 @@ def perform_operation(operation):
         num1 = float(entry_num1.get())
         num2 = float(entry_num2.get())
         if operation == 'add':
-            result.set(num1 + num2)
+            result.set(num1 + num2) 
         elif operation == 'subtract':
             result.set(num1 - num2)
         elif operation == 'multiply':
